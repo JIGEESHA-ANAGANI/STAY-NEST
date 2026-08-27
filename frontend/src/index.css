@@ -1,0 +1,1578 @@
+/* ==========================================================================
+   StayNest theme
+   Every colour lives here as a token, defined twice: once for light and once
+   under [data-bs-theme="dark"]. Components reference the tokens, never a raw
+   hex — that is what lets the toggle in the top bar recolour the whole app.
+   ========================================================================== */
+
+:root {
+    /* Brand */
+    --sn-brand: #1e3a5f;
+    --sn-brand-hover: #16304f;
+    --sn-brand-active: #112640;
+    --sn-on-brand: #ffffff;
+    --sn-accent: #f59e0b;
+
+    /* Surfaces */
+    --sn-app-bg: #f4f6f9;
+    --sn-surface: #ffffff;
+    --sn-surface-2: #f8fafc;
+    --sn-sidebar-bg: #1b3454;
+    --sn-sidebar-fg: #b9c7da;
+    --sn-sidebar-fg-active: #ffffff;
+    --sn-border: #e3e8ef;
+    --sn-text-muted: #64748b;
+
+    /* Shape — one radius scale, applied consistently */
+    --sn-radius: 10px;
+    --sn-radius-sm: 7px;
+    /* Referenced by both the docked width and the collapsed slide-out distance. */
+    --sn-sidebar-width: 232px;
+    --sn-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 1px 3px rgba(16, 24, 40, .06);
+
+    /* Bootstrap overrides so its own components pick up the brand */
+    --bs-primary: var(--sn-brand);
+    --bs-primary-rgb: 30, 58, 95;
+    --bs-body-bg: var(--sn-app-bg);
+    --bs-border-color: var(--sn-border);
+    --bs-secondary-color: var(--sn-text-muted);
+    --bs-border-radius: var(--sn-radius-sm);
+    --bs-link-color: var(--sn-brand);
+    --bs-link-hover-color: var(--sn-brand-hover);
+}
+
+/* Dark palette — the same navy-and-amber identity as light mode, with the lights
+   off. Surfaces are navy-tinted rather than neutral grey, so the brand still reads
+   as StayNest; amber stays exactly the accent it is in light mode.
+   The one value that cannot carry over is the brand navy itself: #1e3a5f on a navy
+   canvas is invisible, so buttons and links lift to #3d6fae — same hue family, and
+   ~5:1 against white label text, which passes AA. */
+[data-bs-theme="dark"] {
+    --sn-brand: #3d6fae;
+    --sn-brand-hover: #4880c2;
+    --sn-brand-active: #335f96;
+    --sn-on-brand: #ffffff;
+    --sn-accent: #f0a726;
+
+    --sn-app-bg: #131b2b;
+    --sn-surface: #1b2740;
+    /* Recessed areas inside a card (table headers, hover fills) sit between the
+       canvas and the card so they read as sunken. */
+    --sn-surface-2: #16203a;
+    /* The sidebar is the darkest chrome, which anchors the left edge. */
+    --sn-sidebar-bg: #0f1725;
+    --sn-sidebar-fg: #9dabc2;
+    --sn-sidebar-fg-active: #ffffff;
+    --sn-border: #2c3a56;
+    --sn-text-muted: #93a2ba;
+
+    --sn-shadow: 0 1px 2px rgba(0, 0, 0, .35), 0 1px 3px rgba(0, 0, 0, .25);
+
+    --bs-primary: var(--sn-brand);
+    --bs-primary-rgb: 61, 111, 174;
+    --bs-body-bg: var(--sn-app-bg);
+    --bs-body-color: #e8edf5;
+    --bs-border-color: var(--sn-border);
+    --bs-secondary-color: var(--sn-text-muted);
+    --bs-emphasis-color: #f2f6fb;
+}
+
+/* --------------------------------------------------------------- base ---- */
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background: var(--sn-app-bg);
+    color: var(--bs-body-color);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Bootstrap's reboot does not cap image width — only the .img-fluid helper does — so a photo
+   dropped into a container narrower than itself pushes the whole page sideways. */
+img {
+    max-width: 100%;
+}
+
+/* Only colours transition, so switching themes doesn't animate layout. */
+body,
+.sidebar,
+.top-navbar,
+.card,
+.modal-content,
+.kanban-col,
+.task-card {
+    transition: background-color .18s ease, border-color .18s ease, color .18s ease;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -.01em;
+}
+
+.text-muted {
+    color: var(--sn-text-muted) !important;
+}
+
+/* ------------------------------------------------------------- layout ---- */
+
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+    /* On a phone, 100vh is the height with the browser chrome hidden, so a "full height" page
+       actually runs off the bottom until you scroll. dvh is the height you can really see. */
+    min-height: 100dvh;
+}
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    /* Without this, a wide table stretches the flex item instead of scrolling
+       inside it, which is what pushed pages sideways on small screens. */
+    min-width: 0;
+}
+
+/* Page padding scales with the viewport — the old flat p-4 wasted a third of a
+   phone screen on margins. */
+.page-body {
+    flex: 1;
+    padding: clamp(.85rem, 3vw, 1.5rem);
+    min-width: 0;
+}
+
+/* ---------------------------------------------------- sidebar toggling ---- */
+
+.sidebar-burger {
+    color: var(--sn-text-muted);
+    padding: .35rem .5rem;
+    line-height: 1;
+    border-radius: var(--sn-radius-sm);
+    text-decoration: none;
+}
+
+.sidebar-burger:hover {
+    color: var(--sn-brand);
+    background: var(--sn-surface-2);
+}
+
+[data-bs-theme="dark"] .sidebar-burger:hover {
+    color: var(--sn-accent);
+}
+
+.sidebar-backdrop {
+    display: none;
+}
+
+/* Wide screens: the sidebar is docked. Collapsing slides it out and lets the
+   content reclaim the space. */
+@media (min-width: 992px) {
+    .sidebar {
+        transition: margin-left .2s ease;
+    }
+
+    .app-layout.sidebar-closed .sidebar {
+        margin-left: calc(-1 * var(--sn-sidebar-width));
+    }
+}
+
+/* Narrow screens: the sidebar floats over the content, so the page never has to
+   give up horizontal room for it. */
+@media (max-width: 991.98px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 1045;
+        overflow-y: auto;
+        transform: translateX(-100%);
+        transition: transform .22s ease;
+        box-shadow: 0 0 2rem rgba(0, 0, 0, .35);
+    }
+
+    .app-layout.sidebar-open .sidebar {
+        transform: translateX(0);
+    }
+
+    .app-layout.sidebar-open .sidebar-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 1040;
+        background: rgba(0, 0, 0, .5);
+    }
+}
+
+/* Someone who prefers reduced motion gets the state change without the slide. */
+@media (prefers-reduced-motion: reduce) {
+
+    .sidebar {
+        transition: none;
+    }
+}
+
+/* ------------------------------------------------------------ sidebar ---- */
+
+.sidebar {
+    width: var(--sn-sidebar-width);
+    flex-shrink: 0;
+    background: var(--sn-sidebar-bg);
+    color: var(--sn-sidebar-fg-active);
+    min-height: 100vh;
+    padding-bottom: 1rem;
+}
+
+.sidebar .brand {
+    padding: 18px 20px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+    /* It is a link now, so the link colour has to be overridden. */
+    color: var(--sn-sidebar-fg-active);
+}
+
+.sidebar .brand:hover {
+    color: var(--sn-sidebar-fg-active);
+    background: rgba(255, 255, 255, .05);
+}
+
+.sidebar .brand span {
+    color: var(--sn-accent);
+}
+
+.sidebar .nav-link {
+    color: var(--sn-sidebar-fg);
+    border-radius: var(--sn-radius-sm);
+    margin: 2px 10px;
+    padding: 9px 12px;
+    font-size: .9rem;
+    display: flex;
+    align-items: center;
+    /* Reserve the active marker's space up front so rows don't shift on hover. */
+    border-left: 3px solid transparent;
+}
+
+.sidebar .nav-link:hover {
+    background: rgba(255, 255, 255, .07);
+    color: var(--sn-sidebar-fg-active);
+}
+
+.sidebar .nav-link.active {
+    background: rgba(255, 255, 255, .11);
+    color: var(--sn-sidebar-fg-active);
+    border-left-color: var(--sn-accent);
+    font-weight: 600;
+}
+
+/* ----------------------------------------------------------- top bar ---- */
+
+.top-navbar {
+    background: var(--sn-surface);
+    border-bottom: 1px solid var(--sn-border);
+    /* Bootstrap's .navbar wraps by default, which on a narrow screen dropped the
+       controls onto a second row under the wordmark. One row at every width. */
+    flex-wrap: nowrap;
+    gap: .5rem;
+}
+
+/* The wordmark side gives up space first: the controls are all fixed-width. */
+.navbar-lead {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.navbar-lead .brand-wordmark {
+    white-space: nowrap;
+}
+
+.navbar-actions {
+    flex: 0 0 auto;
+}
+
+/* --- notification bell --- */
+
+.notification-bell {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    /* Room for the unread pill, which is centred on the icon's top-right corner. */
+    padding: .4rem .55rem;
+    cursor: pointer;
+    color: var(--bs-body-color);
+    border-radius: var(--sn-radius-sm);
+}
+
+.notification-bell:hover {
+    background: var(--sn-surface-2);
+}
+
+.notification-bell-count {
+    position: absolute;
+    top: .1rem;
+    right: .1rem;
+    font-size: .65rem;
+    line-height: 1;
+    padding: .2rem .35rem;
+}
+
+.brand-wordmark {
+    color: var(--sn-brand);
+    font-weight: 700;
+    letter-spacing: -.01em;
+}
+
+[data-bs-theme="dark"] .brand-wordmark {
+    color: #e8edf5;
+}
+
+.theme-toggle {
+    color: var(--sn-text-muted);
+    padding: .4rem .55rem;
+    line-height: 1;
+    border-radius: var(--sn-radius-sm);
+    text-decoration: none;
+}
+
+.theme-toggle:hover {
+    color: var(--sn-brand);
+    background: var(--sn-surface-2);
+}
+
+[data-bs-theme="dark"] .theme-toggle:hover {
+    color: var(--sn-accent);
+}
+
+.user-menu-toggle {
+    color: var(--bs-body-color);
+    background: var(--sn-surface-2);
+    border: 1px solid var(--sn-border);
+    padding: .35rem .7rem;
+    border-radius: var(--sn-radius-sm);
+    text-decoration: none;
+}
+
+.user-menu-toggle:hover,
+.user-menu-toggle:focus,
+.user-menu-toggle.show {
+    color: var(--bs-body-color);
+    background: var(--sn-surface);
+    border-color: var(--sn-brand);
+}
+
+/* Bootstrap's caret on a link-variant toggle inherits the link colour; keep it neutral. */
+.user-menu-toggle::after {
+    color: var(--sn-text-muted);
+}
+
+/* ------------------------------------------------------------- cards ---- */
+
+.card {
+    --bs-card-bg: var(--sn-surface);
+    --bs-card-border-color: var(--sn-border);
+    --bs-card-border-radius: var(--sn-radius);
+    --bs-card-inner-border-radius: var(--sn-radius);
+}
+
+/* The old look leaned on drop shadows; a hairline border reads cleaner and
+   survives dark mode, where shadows are nearly invisible. */
+.card.shadow-sm {
+    box-shadow: var(--sn-shadow) !important;
+    border: 1px solid var(--sn-border);
+}
+
+.card-header {
+    background: transparent !important;
+    border-bottom: 1px solid var(--sn-border);
+    font-weight: 600;
+    padding: .8rem 1rem;
+}
+
+.kpi-card {
+    border: 1px solid var(--sn-border);
+    border-radius: var(--sn-radius);
+    box-shadow: var(--sn-shadow);
+}
+
+.kpi-card .card-body {
+    padding: 1.15rem 1.35rem;
+}
+
+.kpi-value {
+    font-size: 1.7rem;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    color: var(--sn-brand);
+}
+
+[data-bs-theme="dark"] .kpi-value {
+    color: #e8edf5;
+}
+
+/* ------------------------------------------------------------ tables ---- */
+
+.table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--bs-body-color);
+    --bs-table-border-color: var(--sn-border);
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background: var(--sn-surface-2);
+    color: var(--sn-text-muted);
+    font-size: .74rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    border-bottom: 1px solid var(--sn-border);
+    white-space: nowrap;
+}
+
+.table>:not(:first-child) {
+    border-top: 0;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+/* ----------------------------------------------------------- buttons ---- */
+
+/* <Button> with no variant renders btn-primary, which is how the brand button
+   is spelled throughout the app. Restyling it here means no inline colours. */
+.btn-primary {
+    --bs-btn-bg: var(--sn-brand);
+    --bs-btn-border-color: var(--sn-brand);
+    --bs-btn-color: var(--sn-on-brand);
+    --bs-btn-hover-bg: var(--sn-brand-hover);
+    --bs-btn-hover-border-color: var(--sn-brand-hover);
+    --bs-btn-hover-color: var(--sn-on-brand);
+    --bs-btn-active-bg: var(--sn-brand-active);
+    --bs-btn-active-border-color: var(--sn-brand-active);
+    --bs-btn-active-color: var(--sn-on-brand);
+    --bs-btn-disabled-bg: var(--sn-brand);
+    --bs-btn-disabled-border-color: var(--sn-brand);
+    --bs-btn-disabled-color: var(--sn-on-brand);
+}
+
+.btn {
+    font-weight: 500;
+    border-radius: var(--sn-radius-sm);
+}
+
+.btn-sm {
+    font-size: .8rem;
+}
+
+/* Amber accent CTA (booking confirmation). Amber needs near-black text — white on
+   #f59e0b is about 2:1 and fails contrast. */
+.btn-accent {
+    --bs-btn-bg: var(--sn-accent);
+    --bs-btn-border-color: var(--sn-accent);
+    --bs-btn-color: #1f1600;
+    --bs-btn-hover-bg: #e08e08;
+    --bs-btn-hover-border-color: #e08e08;
+    --bs-btn-hover-color: #1f1600;
+    --bs-btn-active-bg: #c97d06;
+    --bs-btn-active-border-color: #c97d06;
+    --bs-btn-active-color: #1f1600;
+    --bs-btn-disabled-bg: var(--sn-accent);
+    --bs-btn-disabled-border-color: var(--sn-accent);
+    --bs-btn-disabled-color: #1f1600;
+}
+
+/* In dark mode the accent is the teal, so the ink flips to the canvas colour. */
+[data-bs-theme="dark"] .btn-accent {
+    --bs-btn-color: var(--sn-on-brand);
+    --bs-btn-hover-bg: var(--sn-brand-hover);
+    --bs-btn-hover-border-color: var(--sn-brand-hover);
+    --bs-btn-hover-color: var(--sn-on-brand);
+    --bs-btn-active-bg: var(--sn-brand-active);
+    --bs-btn-active-border-color: var(--sn-brand-active);
+    --bs-btn-active-color: var(--sn-on-brand);
+    --bs-btn-disabled-color: var(--sn-on-brand);
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--sn-brand);
+    --bs-btn-border-color: var(--sn-brand);
+    --bs-btn-hover-bg: var(--sn-brand);
+    --bs-btn-hover-border-color: var(--sn-brand);
+    --bs-btn-hover-color: var(--sn-on-brand);
+    --bs-btn-active-bg: var(--sn-brand-active);
+    --bs-btn-active-border-color: var(--sn-brand-active);
+}
+
+/* ------------------------------------------------- forms / overlays ---- */
+
+.form-control,
+.form-select {
+    border-radius: var(--sn-radius-sm);
+    border-color: var(--sn-border);
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--sn-brand);
+    box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), .15);
+}
+
+.form-label {
+    font-size: .85rem;
+    font-weight: 500;
+    margin-bottom: .3rem;
+}
+
+.modal-content {
+    --bs-modal-bg: var(--sn-surface);
+    --bs-modal-border-color: var(--sn-border);
+    border-radius: var(--sn-radius);
+}
+
+.modal-header,
+.modal-footer {
+    border-color: var(--sn-border);
+}
+
+.dropdown-menu {
+    --bs-dropdown-bg: var(--sn-surface);
+    --bs-dropdown-border-color: var(--sn-border);
+    border-radius: var(--sn-radius);
+    box-shadow: var(--sn-shadow);
+}
+
+.alert {
+    border-radius: var(--sn-radius-sm);
+}
+
+.badge {
+    font-weight: 600;
+    letter-spacing: .01em;
+}
+
+/* ------------------------------------------------------------ landing ---- */
+
+/* Public hotel site at "/". Reads from the same tokens as the app, so the theme
+   toggle recolours it too.
+
+   Responsiveness here is mostly breakpoint-free: the card grids use
+   `auto-fit` + `minmax`, so they reflow continuously at any width or aspect
+   ratio instead of snapping at fixed sizes. Display type uses clamp(), so it
+   scales with the viewport rather than jumping. Only a few genuine edge cases
+   (narrow phones, short landscape screens) need media queries. */
+
+.site {
+    /* Contain the decorative hero glow. */
+    overflow-x: hidden;
+}
+
+/* Stop the sticky header from covering a section heading when an anchor link
+   jumps to it. */
+.site section[id] {
+    scroll-margin-top: 5rem;
+}
+
+/* ------------------------------------------------------- landing header -- */
+
+.site-header {
+    background: var(--sn-surface);
+    border-bottom: 1px solid var(--sn-border);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.site-header .nav-anchors {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.site-header .nav-anchors a {
+    color: var(--sn-text-muted);
+    text-decoration: none;
+    font-size: .92rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.site-header .nav-anchors a:hover {
+    color: var(--sn-brand);
+}
+
+[data-bs-theme="dark"] .site-header .nav-anchors a:hover {
+    color: var(--sn-accent);
+}
+
+/* The anchor links are the first thing to go when width runs out — the log-in
+   button and theme toggle matter more. */
+@media (max-width: 991.98px) {
+    .site-header .nav-anchors {
+        display: none;
+    }
+}
+
+/* Shows who is signed in, and doubles as the way into the app. */
+.viewer-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .3rem .6rem;
+    border: 1px solid var(--sn-border);
+    border-radius: var(--sn-radius-sm);
+    background: var(--sn-surface-2);
+    color: var(--bs-body-color);
+    text-decoration: none;
+    font-size: .875rem;
+    white-space: nowrap;
+}
+
+.viewer-chip:hover {
+    color: var(--bs-body-color);
+    border-color: var(--sn-brand);
+}
+
+.viewer-chip .name {
+    font-weight: 600;
+}
+
+/* It is a Dropdown.Toggle, so it arrives as a .btn-link — keep the chip's own look
+   and stop the caret inheriting the link colour. */
+.viewer-chip.show {
+    border-color: var(--sn-brand);
+}
+
+.viewer-chip::after {
+    color: var(--sn-text-muted);
+}
+
+/* --------------------------------------------------------------- hero ---- */
+
+.hero {
+    position: relative;
+    background:
+        radial-gradient(90rem 40rem at 75% -10%, rgba(var(--bs-primary-rgb), .18), transparent 60%),
+        var(--sn-surface-2);
+    border-bottom: 1px solid var(--sn-border);
+    /* Tall enough to feel like a hotel hero, never so tall it pushes the content
+       off a laptop or a phone in landscape. dvh so a phone's address bar does not
+       make it taller than the screen. */
+    min-height: min(76vh, 640px);
+    min-height: min(76dvh, 640px);
+    display: flex;
+    align-items: center;
+    padding: clamp(2.5rem, 7vw, 6rem) 0;
+}
+
+/* Copy on the left, artwork on the right — the right half used to be empty space.
+   One column until lg, where there is room for the picture without cramping the headline. */
+.hero-layout {
+    display: grid;
+    gap: clamp(2rem, 4vw, 3.5rem);
+    align-items: center;
+}
+
+.hero-copy {
+    min-width: 0;
+}
+
+.hero-art {
+    /* Ordered after the copy in the markup, so it stacks underneath on a phone. */
+    display: flex;
+    justify-content: center;
+}
+
+.hero-art img {
+    width: 100%;
+    max-width: 34rem;
+    height: auto;
+    border-radius: var(--sn-radius);
+    border: 1px solid var(--sn-border);
+    box-shadow: 0 18px 40px -24px rgba(15, 30, 55, .55);
+}
+
+@media (min-width: 992px) {
+    .hero-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    /* The headline no longer has to hold the full width on its own. */
+    .hero-copy h1 {
+        max-width: 16ch;
+    }
+}
+
+/* The artwork earns its place on a wide screen; on a phone it only costs a scroll. */
+@media (max-width: 575.98px) {
+    .hero-art {
+        display: none;
+    }
+}
+
+.hero h1 {
+    /* 2rem on a small phone up to 4rem on a desktop, fluid in between. */
+    font-size: clamp(2rem, 5.5vw, 4rem);
+    line-height: 1.08;
+    font-weight: 700;
+    letter-spacing: -.03em;
+    max-width: 20ch;
+    margin-bottom: 1.25rem;
+}
+
+.hero .hero-sub {
+    color: var(--sn-text-muted);
+    font-size: clamp(1rem, 1.5vw, 1.2rem);
+    max-width: 46ch;
+    margin-bottom: 2rem;
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+}
+
+/* Check-in / check-out / front desk strip under the hero copy. */
+.hero-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(1.25rem, 4vw, 3rem);
+    margin-top: clamp(2rem, 5vw, 3.5rem);
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--sn-border);
+}
+
+.hero-facts div {
+    min-width: 7rem;
+}
+
+.hero-facts dt {
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--sn-text-muted);
+    font-weight: 600;
+    margin-bottom: .15rem;
+}
+
+.hero-facts dd {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.05rem;
+}
+
+/* Short landscape screens (phones turned sideways, some tablets): a 76vh hero
+   would fill the whole screen with nothing but a headline. */
+@media (max-height: 560px) and (orientation: landscape) {
+    .hero {
+        min-height: 0;
+        padding: 2.5rem 0;
+    }
+
+    .hero h1 {
+        font-size: clamp(1.6rem, 4vw, 2.25rem);
+    }
+
+    .hero-facts {
+        margin-top: 1.5rem;
+    }
+}
+
+/* ------------------------------------------------------------ sections --- */
+
+.section {
+    padding: clamp(3rem, 7vw, 5.5rem) 0;
+}
+
+.section-head {
+    max-width: 46ch;
+    margin-bottom: clamp(1.75rem, 4vw, 3rem);
+}
+
+.section-head.center {
+    margin-inline: auto;
+    text-align: center;
+}
+
+.section-label {
+    display: block;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--sn-accent);
+    margin-bottom: .6rem;
+}
+
+.section-head h2 {
+    font-size: clamp(1.6rem, 3.2vw, 2.4rem);
+    font-weight: 700;
+    letter-spacing: -.02em;
+    margin-bottom: .6rem;
+}
+
+.section-head p {
+    color: var(--sn-text-muted);
+    margin: 0;
+}
+
+.section-alt {
+    background: var(--sn-surface-2);
+    border-block: 1px solid var(--sn-border);
+}
+
+/* ---------------------------------------------------------------- grid ---- */
+
+/* One breakpoint-free grid, reused by rooms, dining and facilities. The min
+   track width differs per section, so each sets its own --min. */
+.auto-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(var(--min, 17rem), 100%), 1fr));
+    gap: clamp(1rem, 2vw, 1.5rem);
+}
+
+/* --------------------------------------------------------------- rooms ---- */
+
+.room-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--sn-surface);
+    border: 1px solid var(--sn-border);
+    border-radius: var(--sn-radius);
+    overflow: hidden;
+    transition: transform .35s ease, box-shadow .35s ease, border-color .35s ease;
+}
+
+.room-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(var(--bs-primary-rgb), .45);
+    box-shadow: 0 22px 44px -28px rgba(15, 30, 55, .55);
+}
+
+.room-card:hover .room-photo img {
+    transform: scale(1.05);
+}
+
+/* All four room types on one row from lg up. Below that they wrap two-up, then one-up —
+   a 4-column row on a tablet leaves each card too narrow for the rate to sit beside the
+   button. Not .auto-grid, which would reflow to 3 + 1 at some widths. */
+.room-row {
+    display: grid;
+    gap: clamp(1rem, 2vw, 1.5rem);
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 576px) {
+    .room-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 992px) {
+    .room-row {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+/* Holds the room artwork, with the type name overlaid on a gradient so it stays legible
+   whatever the picture behind it. */
+.room-photo {
+    position: relative;
+    aspect-ratio: 3 / 2;
+    background: var(--sn-surface-2);
+    overflow: hidden;
+}
+
+.room-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform .6s ease;
+}
+
+.room-photo-label {
+    position: absolute;
+    inset: auto 0 0 0;
+    padding: 1.6rem 1rem .7rem;
+    background: linear-gradient(to top, rgba(9, 20, 36, .82), transparent);
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    font-size: 1.15rem;
+}
+
+.room-body {
+    padding: 1.15rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: .75rem;
+}
+
+.room-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem .9rem;
+    color: var(--sn-text-muted);
+    font-size: .85rem;
+}
+
+.room-amenities {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+}
+
+.room-amenities li {
+    font-size: .78rem;
+    padding: .2rem .55rem;
+    border-radius: 999px;
+    background: var(--sn-surface-2);
+    border: 1px solid var(--sn-border);
+    color: var(--sn-text-muted);
+}
+
+.room-rate {
+    /* Pushes the rate + button to the bottom, so cards of differing text length
+       still line up. */
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* Four cards to a row leaves ~240px inside each; "₹18,500 / night" and a Book button
+       will not both fit, so the button drops beneath the price instead of overflowing. */
+    flex-wrap: wrap;
+    gap: .75rem;
+    padding-top: .5rem;
+}
+
+.room-rate .amount {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -.02em;
+}
+
+.room-rate .per {
+    color: var(--sn-text-muted);
+    font-size: .8rem;
+}
+
+/* -------------------------------------------------------------- dining ---- */
+
+/*
+ * Four identical tiles. The fixed aspect ratio is what keeps them the same size whatever the
+ * length of the copy — the old cards grew to fit their text and ended up ragged.
+ */
+.dining-row {
+    display: grid;
+    gap: clamp(1rem, 2vw, 1.5rem);
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 576px) {
+    .dining-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 992px) {
+    .dining-row {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.dining-tile {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    border-radius: var(--sn-radius);
+    border: 1px solid var(--sn-border);
+    overflow: hidden;
+    background: var(--sn-surface-2);
+    cursor: pointer;
+    transition: transform .35s ease, box-shadow .35s ease;
+}
+
+.dining-tile:hover,
+.dining-tile:focus-visible {
+    transform: translateY(-4px);
+    box-shadow: 0 22px 44px -26px rgba(15, 30, 55, .6);
+}
+
+/* These tiles are focusable so the keyboard and touch can open them, so they need a focus
+   ring that is actually visible — the lift alone is far too subtle to navigate by. */
+.dining-tile:focus-visible {
+    outline: 2px solid var(--sn-accent);
+    outline-offset: 3px;
+}
+
+.dining-tile img {
+    width: 100%;
+    height: 100%;
+    /* Some of these are portrait shots, so they crop to the tile rather than letterbox. */
+    object-fit: cover;
+    display: block;
+    transition: transform .6s ease;
+}
+
+.dining-tile:hover img,
+.dining-tile:focus-visible img {
+    transform: scale(1.06);
+}
+
+/*
+ * The name is always legible; the description is folded away until the tile is hovered.
+ * :focus-visible is there so a tap or the keyboard opens it too — hover alone would leave
+ * touch users unable to read any of this.
+ */
+.dining-veil {
+    position: absolute;
+    inset: auto 0 0 0;
+    padding: 1.15rem 1.15rem 1.25rem;
+    background: linear-gradient(to top, rgba(9, 20, 36, .94) 25%, rgba(9, 20, 36, .72) 60%, transparent);
+    color: #fff;
+}
+
+.dining-veil .kind {
+    display: block;
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .09em;
+    color: var(--sn-accent);
+    font-weight: 700;
+    margin-bottom: .3rem;
+}
+
+.dining-veil h3 {
+    font-size: 1.08rem;
+    font-weight: 650;
+    margin: 0;
+    color: #fff;
+}
+
+.dining-veil p {
+    margin: 0;
+    font-size: .88rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, .88);
+    /* Collapsed rather than hidden, so it animates open instead of appearing abruptly. */
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height .4s ease, opacity .3s ease, margin-top .4s ease;
+}
+
+.dining-tile:hover .dining-veil p,
+.dining-tile:focus-visible .dining-veil p,
+.dining-tile:focus-within .dining-veil p {
+    max-height: 8rem;
+    opacity: 1;
+    margin-top: .5rem;
+}
+
+/* ------------------------------------------------- about / policy slides ---- */
+
+.story-carousel {
+    background: var(--sn-surface);
+    border: 1px solid var(--sn-border);
+    border-radius: var(--sn-radius);
+    overflow: hidden;
+}
+
+/*
+ * One fixed height for every slide, so the carousel never changes size as it turns over and
+ * the whole slide is on screen without scrolling. An explicit height — not min-height — is
+ * what guarantees both of those: min-height let the taller slide win and shifted the page
+ * under the reader mid-transition.
+ *
+ * The photograph is the background of the slide rather than a column beside it. That is one
+ * layout at every width instead of two, which is why the height can be pinned at all: a
+ * stacked photo-above-text slide is inevitably taller than a phone screen.
+ */
+.story {
+    position: relative;
+    height: clamp(23rem, 68vh, 33rem);
+    height: clamp(23rem, 68dvh, 33rem);
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+
+/* A phone held sideways is shorter than the clamp's floor, so the floor comes down with it —
+   still one fixed height for both slides, just a smaller one. */
+@media (max-height: 560px) {
+    .story {
+        height: 20rem;
+    }
+}
+
+.story-art {
+    position: absolute;
+    inset: 0;
+    background: var(--sn-surface-2);
+}
+
+.story-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Legibility over the photograph. Darkest where the words sit, clearing towards the far edge
+   so the picture is still doing something. */
+.story-art::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(6, 14, 26, .92), rgba(6, 14, 26, .74));
+}
+
+@media (min-width: 992px) {
+    .story-art::after {
+        background: linear-gradient(100deg, rgba(6, 14, 26, .95) 0%, rgba(6, 14, 26, .86) 46%, rgba(6, 14, 26, .3) 100%);
+    }
+}
+
+.story-copy {
+    position: relative;
+    z-index: 1;
+    max-width: 44rem;
+    padding: clamp(1.5rem, 4vw, 3rem);
+    /* Clears the carousel's own indicators, which sit over the bottom of the slide. */
+    padding-bottom: clamp(2.75rem, 5vw, 3.25rem);
+    color: #fff;
+}
+
+.story-copy .section-label {
+    color: var(--sn-accent);
+}
+
+.story-copy h2 {
+    font-size: clamp(1.4rem, 2.8vw, 2.1rem);
+    font-weight: 700;
+    letter-spacing: -.02em;
+    margin-bottom: .8rem;
+    color: #fff;
+}
+
+.story-copy p {
+    color: rgba(255, 255, 255, .84);
+    font-size: clamp(.9rem, 1.1vw, 1rem);
+    margin-bottom: .8rem;
+}
+
+.story-copy p:last-child {
+    margin-bottom: 0;
+}
+
+.policy-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: .55rem;
+}
+
+.policy-list li {
+    display: flex;
+    gap: .65rem;
+    align-items: start;
+    font-size: clamp(.84rem, 1vw, .95rem);
+    line-height: 1.45;
+    color: rgba(255, 255, 255, .84);
+}
+
+.policy-list svg {
+    flex: 0 0 auto;
+    margin-top: .3rem;
+    color: var(--sn-accent);
+}
+
+/*
+ * Bootstrap's arrows are a full-height invisible strip either side, which on this slide covers
+ * the words and swallows their clicks. Shrunk to a pair of buttons pinned bottom-right, clear
+ * of the copy at every width.
+ */
+.story-carousel .carousel-control-prev,
+.story-carousel .carousel-control-next {
+    top: auto;
+    bottom: 1rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .16);
+    border: 1px solid rgba(255, 255, 255, .3);
+    opacity: 1;
+    transition: background-color .2s ease;
+}
+
+.story-carousel .carousel-control-prev {
+    left: auto;
+    right: 4rem;
+}
+
+.story-carousel .carousel-control-next {
+    right: 1rem;
+}
+
+.story-carousel .carousel-control-prev:hover,
+.story-carousel .carousel-control-next:hover,
+.story-carousel .carousel-control-prev:focus-visible,
+.story-carousel .carousel-control-next:focus-visible {
+    background: rgba(255, 255, 255, .32);
+}
+
+.story-carousel .carousel-control-prev-icon,
+.story-carousel .carousel-control-next-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Left-aligned under the copy, since the arrows now own the bottom-right corner. */
+.story-carousel .carousel-indicators {
+    justify-content: start;
+    margin-left: clamp(1.5rem, 4vw, 3rem);
+    margin-right: 7.5rem;
+    margin-bottom: 1.6rem;
+}
+
+.story-carousel .carousel-indicators [data-bs-target] {
+    width: 1.75rem;
+    height: 3px;
+    border-radius: 2px;
+    border: 0;
+    background-color: rgba(255, 255, 255, .4);
+    opacity: 1;
+}
+
+.story-carousel .carousel-indicators .active {
+    background-color: var(--sn-accent);
+}
+
+/* ---------------------------------------------------------- facilities ---- */
+
+.facility {
+    display: flex;
+    gap: .85rem;
+    align-items: flex-start;
+}
+
+.facility-icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--sn-radius-sm);
+    background: rgba(var(--bs-primary-rgb), .12);
+    color: var(--sn-brand);
+}
+
+[data-bs-theme="dark"] .facility-icon {
+    color: #a9c4e6;
+}
+
+.facility h3 {
+    font-size: .98rem;
+    font-weight: 600;
+    margin-bottom: .2rem;
+}
+
+.facility p {
+    color: var(--sn-text-muted);
+    font-size: .86rem;
+    margin: 0;
+}
+
+/* ------------------------------------------------------------- contact ---- */
+
+.contact-card {
+    background: var(--sn-surface);
+    border: 1px solid var(--sn-border);
+    border-radius: var(--sn-radius);
+    padding: clamp(1.25rem, 3vw, 2rem);
+    height: 100%;
+}
+
+.contact-card dt {
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--sn-text-muted);
+    font-weight: 700;
+    margin-bottom: .2rem;
+}
+
+.contact-card dd {
+    margin: 0 0 1.1rem;
+    line-height: 1.5;
+}
+
+.contact-card dd:last-child {
+    margin-bottom: 0;
+}
+
+/* ----------------------------------------------------------- closing cta -- */
+
+.closing-cta {
+    background:
+        radial-gradient(60rem 30rem at 50% 120%, rgba(var(--bs-primary-rgb), .22), transparent 65%),
+        var(--sn-surface);
+    border: 1px solid var(--sn-border);
+    border-radius: var(--sn-radius);
+    padding: clamp(2rem, 6vw, 4rem) clamp(1rem, 4vw, 3rem);
+    text-align: center;
+}
+
+.closing-cta h2 {
+    font-size: clamp(1.5rem, 3vw, 2.2rem);
+    font-weight: 700;
+    letter-spacing: -.02em;
+    margin-bottom: .6rem;
+}
+
+.closing-cta p {
+    color: var(--sn-text-muted);
+    max-width: 44ch;
+    margin: 0 auto 1.75rem;
+}
+
+/* -------------------------------------------------------------- footer ---- */
+
+.site-footer {
+    border-top: 1px solid var(--sn-border);
+    background: var(--sn-surface-2);
+    padding: clamp(2.5rem, 5vw, 4rem) 0 clamp(1.25rem, 2vw, 1.75rem);
+    color: var(--sn-text-muted);
+    font-size: .875rem;
+}
+
+.site-footer a {
+    color: var(--sn-text-muted);
+    text-decoration: none;
+    transition: color .2s ease;
+}
+
+.site-footer a:hover {
+    color: var(--sn-brand);
+}
+
+[data-bs-theme="dark"] .site-footer a:hover {
+    color: var(--sn-accent);
+}
+
+/* The brand column takes roughly twice the width of each link column. */
+.footer-grid {
+    display: grid;
+    gap: clamp(1.75rem, 4vw, 3rem);
+    grid-template-columns: 1fr;
+}
+
+@media (min-width: 576px) {
+    .footer-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 992px) {
+    .footer-grid {
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+    }
+}
+
+.footer-brand p {
+    max-width: 34ch;
+    margin-bottom: 0;
+}
+
+.footer-tagline {
+    color: var(--sn-accent);
+    font-weight: 600;
+    margin: .5rem 0 .75rem;
+}
+
+.footer-col {
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+    align-items: start;
+}
+
+.footer-col h4 {
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--bs-body-color);
+    margin-bottom: .35rem;
+}
+
+.footer-bottom {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-top: clamp(2rem, 4vw, 3rem);
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--sn-border);
+    font-size: .82rem;
+}
+
+/* Users who prefer reduced motion get no hover lift or scroll smoothing. */
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    .room-card,
+    .room-photo img,
+    .dining-tile,
+    .dining-tile img,
+    .dining-veil p {
+        transition: none;
+    }
+
+    .room-card:hover,
+    .dining-tile:hover,
+    .dining-tile:focus-visible {
+        transform: none;
+    }
+
+    .room-card:hover .room-photo img,
+    .dining-tile:hover img,
+    .dining-tile:focus-visible img {
+        transform: none;
+    }
+}
+
+/* -------------------------------------------------------------- login ---- */
+
+.login-bg {
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: linear-gradient(135deg, var(--sn-sidebar-bg), var(--sn-brand));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+/* The sign-in and register cards used fixed pixel widths, which overflowed on
+   narrow phones. They are now capped rather than fixed. */
+.auth-card {
+    width: 100%;
+    max-width: 400px;
+}
+
+.auth-card-wide {
+    width: 100%;
+    max-width: 440px;
+}
+
+/* ------------------------------------------------ app-wide responsive ---- */
+
+/* Below the tablet breakpoint, let rows inside a page reflow instead of
+   overflowing. Page title rows (heading + action button) and filter rows are the
+   usual offenders. Wrapping only takes effect when the row would not fit, so
+   layouts that already fit are untouched. */
+@media (max-width: 767.98px) {
+    .page-body .d-flex:not(.flex-nowrap) {
+        flex-wrap: wrap;
+    }
+
+    /* Cards sit edge to edge, so their padding shouldn't double up with the page's. */
+    .card-body {
+        padding: 1rem;
+    }
+
+    /* Give dialogs the full width on a phone. */
+    .modal-dialog {
+        margin: .5rem;
+    }
+}
+
+/* Very narrow phones: shrink the display sizes a step further. */
+@media (max-width: 400px) {
+    .table {
+        font-size: .875rem;
+    }
+
+    h4 {
+        font-size: 1.15rem;
+    }
+}
+
+/* --------------------------------------------------------- housekeeping -- */
+
+.kanban-col {
+    background: var(--sn-surface);
+    border: 1px solid var(--sn-border);
+    border-radius: var(--sn-radius);
+    padding: 12px;
+    min-height: 200px;
+}
+
+.task-card {
+    background: var(--sn-surface-2);
+    border: 1px solid var(--sn-border);
+    border-left: 3px solid var(--sn-brand);
+    border-radius: var(--sn-radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+}
+
+/* Room-status badges: fixed hues, since they encode meaning rather than brand.
+   The dark variants are lifted so they stay legible on the dark canvas. */
+.badge-room-AVAILABLE {
+    background: #16a34a;
+}
+
+.badge-room-OCCUPIED {
+    background: #dc2626;
+}
+
+.badge-room-CLEANING {
+    background: #f59e0b;
+    color: #1a1a1a;
+}
+
+.badge-room-MAINTENANCE {
+    background: #7c3aed;
+}
+
+.badge-room-BLOCKED {
+    background: #475569;
+}
+
+[data-bs-theme="dark"] .badge-room-AVAILABLE {
+    background: #22c55e;
+    color: #05200f;
+}
+
+[data-bs-theme="dark"] .badge-room-OCCUPIED {
+    background: #ef4444;
+    color: #2a0606;
+}
+
+[data-bs-theme="dark"] .badge-room-CLEANING {
+    background: #fbbf24;
+    color: #2a1c00;
+}
+
+[data-bs-theme="dark"] .badge-room-MAINTENANCE {
+    background: #a78bfa;
+    color: #1b0f3d;
+}
+
+[data-bs-theme="dark"] .badge-room-BLOCKED {
+    background: #94a3b8;
+    color: #131b26;
+}
